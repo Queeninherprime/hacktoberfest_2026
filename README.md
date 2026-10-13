@@ -1,6 +1,8 @@
 # Offline Listing Writer
 
 Write product listings for WhatsApp, Facebook Marketplace and Instagram in French or English, using an open-weight AI model that runs entirely on your own computer. No internet, no subscription, and your prices and customer details never leave the machine.
+ ![English listing](screenshots/english-listing.png)
+   ![French listing](screenshots/french-listing.png)
 
 Built for the Hacktoberfest 2026 DEV Challenge (Week 2: Side Hustle).
 
