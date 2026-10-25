@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offline Listing Writer</title>
+<style>
+  :root {
+    --bg: #eef2ee;
+    --panel: #ffffff;
+    --ink: #16241c;
+    --muted: #55645b;
+    --line: #cfd9d1;
+    --green: #0f7b4f;
+    --green-dark: #0a5c3a;
+    --bubble: #d9f2c9;
+    --warn: #9a3412;
+    --font: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font); font-size: 16px; line-height: 1.5;
+  }
+  header { padding: 20px 16px 4px; max-width: 980px; margin: 0 auto; }
+  h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.01em; }
+  .sub { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
+  .status { margin-top: 10px; font-size: 0.9rem; color: var(--muted); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #aaa; margin-right: 6px; }
+  .dot.ok { background: var(--green); }
+  .dot.bad { background: var(--warn); }
+  main {
+    max-width: 980px; margin: 0 auto; padding: 12px 16px 40px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  section {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 18px;
+  }
+  h2 { margin: 0 0 12px; font-size: 1.05rem; }
+  label { display: block; margin: 12px 0 4px; font-weight: 600; font-size: 0.92rem; }
+  input, select, textarea {
+    width: 100%; padding: 10px 11px; font: inherit; color: var(--ink);
+    background: #fff; border: 1px solid #aebbb1; border-radius: 6px;
+  }
+  textarea { resize: vertical; min-height: 84px; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
+    outline: 3px solid #f4b400; outline-offset: 1px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 420px) { .row { grid-template-columns: 1fr; } }
+  button, .btn {
+    font: inherit; font-weight: 600; cursor: pointer; text-decoration: none;
+    display: inline-block; text-align: center;
+    padding: 11px 16px; border-radius: 6px; border: 1px solid var(--green);
+    background: var(--green); color: #fff;
+  }
+  button:hover, .btn:hover { background: var(--green-dark); }
+  button.secondary, .btn.secondary { background: #fff; color: var(--green-dark); }
+  button.secondary:hover, .btn.secondary:hover { background: #eaf4ee; }
+  button:disabled { opacity: 0.6; cursor: wait; }
+  #generate { width: 100%; margin-top: 18px; }
+  .bubble-wrap { background: #e6ddd0; border-radius: 8px; padding: 16px; min-height: 180px; }
+  .bubble {
+    background: var(--bubble); border-radius: 10px 10px 2px 10px;
+    padding: 12px 14px; max-width: 100%; white-space: pre-wrap;
+    word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,.15);
+  }
+  .empty { color: var(--muted); font-style: italic; margin: 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .msg { margin-top: 10px; font-size: 0.92rem; min-height: 1.3em; }
+  .msg.err { color: var(--warn); }
+  .hint { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+  #history { list-style: none; padding: 0; margin: 0; }
+  #history li { border-top: 1px solid var(--line); }
+  #history button {
+    background: none; border: 0; color: var(--ink); width: 100%;
+    text-align: left; font-weight: 400; padding: 9px 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #history button:hover { background: #f1f6f2; }
+  .full { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Offline Listing Writer</h1>
+  <p class="sub">Write your product listing in seconds, with no internet and no subscription. Connect only when you are ready to post.</p>
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">Checking the AI model…</span></div>
+</header>
+
+<main>
+  <section aria-labelledby="formTitle">
+    <h2 id="formTitle">Product details</h2>
+
+    <label for="product">Product</label>
+    <input id="product" placeholder="e.g. Samsung Galaxy A14 phone">
+
+    <div class="row">
+      <div>
+        <label for="condition">Condition</label>
+        <input id="condition" placeholder="e.g. new, like new, used">
+      </div>
+      <div>
+        <label for="price">Price</label>
+        <input id="price" placeholder="e.g. 85,000 FCFA">
+      </div>
+    </div>
+
+    <label for="details">Details</label>
+    <textarea id="details" placeholder="Colour, size, storage, why you are selling, delivery…"></textarea>
+
+    <label for="contact">Your contact or location</label>
+    <input id="contact" placeholder="e.g. WhatsApp +237 6XX XXX XXX, Yaoundé">
+
+    <div class="row">
+      <div>
+        <label for="language">Language</label>
+        <select id="language">
+          <option value="fr">French</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+      <div>
+        <label for="platform">Post on</label>
+        <select id="platform">
+          <option value="whatsapp">WhatsApp</option>
+          <option value="facebook">Facebook Marketplace</option>
+          <option value="instagram">Instagram</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="tone">Tone</label>
+        <select id="tone">
+          <option value="friendly">Friendly</option>
+          <option value="professional">Professional</option>
+        </select>
+      </div>
+      <div>
+        <label for="model">AI model</label>
+        <select id="model"><option value="">Default</option></select>
+      </div>
+    </div>
+
+    <button id="generate" type="button">Write my listing</button>
+  </section>
+
+  <section aria-labelledby="outTitle">
+    <h2 id="outTitle">Your listing</h2>
+    <div class="bubble-wrap">
+      <div id="bubble" class="bubble" hidden></div>
+      <p id="empty" class="empty">Your listing will appear here.</p>
+    </div>
+    <div class="actions">
+      <button id="copy" class="secondary" type="button" disabled>Copy listing</button>
+      <a id="share" class="btn secondary" href="#" target="_blank" rel="noopener" aria-disabled="true">Send on WhatsApp</a>
+    </div>
+    <div id="msg" class="msg" role="status" aria-live="polite"></div>
+    <p class="hint">Copying works offline. Sending on WhatsApp needs internet, so write several listings first and send them when you connect.</p>
+  </section>
+
+  <section class="full" aria-labelledby="histTitle">
+    <h2 id="histTitle">Saved listings</h2>
+    <ul id="history"></ul>
+    <p id="histEmpty" class="empty">Listings you write are saved on this computer.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var current = "";
+  var KEY = "listings-v1";
+
+  function setMsg(text, isErr) {
+    $("msg").textContent = text || "";
+    $("msg").className = "msg" + (isErr ? " err" : "");
+  }
+
+  function showListing(text) {
+    current = text;
+    $("bubble").textContent = text;
+    $("bubble").hidden = !text;
+    $("empty").hidden = !!text;
+    $("copy").disabled = !text;
+    var share = $("share");
+    if (text) {
+      share.href = "https://wa.me/?text=" + encodeURIComponent(text);
+      share.removeAttribute("aria-disabled");
+    } else {
+      share.href = "#";
+      share.setAttribute("aria-disabled", "true");
+    }
+  }
+
+  function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; }
+  }
+  function saveHistory(list) {
+    try { localStorage.setItem(KEY, JSON.stringify(list.slice(0, 30))); } catch (e) {}
+  }
+  function renderHistory() {
+    var list = loadHistory();
+    var ul = $("history");
+    ul.innerHTML = "";
+    $("histEmpty").hidden = list.length > 0;
+    list.forEach(function (item) {
+      var li = document.createElement("li");
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = item.title + " — " + item.text.split("\n")[0];
+      b.addEventListener("click", function () {
+        showListing(item.text);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+      li.appendChild(b);
+      ul.appendChild(li);
+    });
+  }
+
+  async function loadModels() {
+    try {
+      var r = await fetch("/api/models");
+      var d = await r.json();
+      var sel = $("model");
+      if (d.models && d.models.length) {
+        sel.innerHTML = "";
+        d.models.forEach(function (name) {
+          var o = document.createElement("option");
+          o.value = name; o.textContent = name;
+          if (name === d.default) o.selected = true;
+          sel.appendChild(o);
+        });
+        $("dot").className = "dot ok";
+        $("statusText").textContent = "AI model ready on this computer. No internet needed.";
+      } else {
+        $("dot").className = "dot bad";
+        $("statusText").textContent = "No AI model found. Open the Ollama app and install a model (see README).";
+      }
+    } catch (e) {
+      $("dot").className = "dot bad";
+      $("statusText").textContent = "Cannot reach the local server.";
+    }
+  }
+
+  $("generate").addEventListener("click", async function () {
+    var product = $("product").value.trim();
+    if (!product) { setMsg("Enter the product name first.", true); $("product").focus(); return; }
+    var btn = $("generate");
+    btn.disabled = true; btn.textContent = "Writing…";
+    setMsg("The AI is writing your listing. This can take a little while on a small computer.");
+    try {
+      var r = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product: product,
+          condition: $("condition").value,
+          price: $("price").value,
+          details: $("details").value,
+          contact: $("contact").value,
+          language: $("language").value,
+          platform: $("platform").value,
+          tone: $("tone").value,
+          model: $("model").value
+        })
+      });
+      var d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Something went wrong.");
+      showListing(d.text);
+      var list = loadHistory();
+      list.unshift({ title: product, text: d.text });
+      saveHistory(list);
+      renderHistory();
+      setMsg("Done. Copy it, then post it when you have internet.");
+    } catch (e) {
+      setMsg(e.message, true);
+    } finally {
+      btn.disabled = false; btn.textContent = "Write my listing";
+    }
+  });
+
+  $("copy").addEventListener("click", async function () {
+    try {
+      await navigator.clipboard.writeText(current);
+      setMsg("Copied.");
+    } catch (e) {
+      var range = document.createRange();
+      range.selectNodeContents($("bubble"));
+      var sel = window.getSelection();
+      sel.removeAllRanges(); sel.addRange(range);
+      setMsg("Select and copy the text manually.");
+    }
+  });
+
+  $("share").addEventListener("click", function (e) {
+    if (!current) e.preventDefault();
+  });
+
+  showListing("");
+  renderHistory();
+  loadModels();
+})();
+</script>
+</body>
+</html>
