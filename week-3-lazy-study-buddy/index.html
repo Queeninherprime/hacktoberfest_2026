@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lazy Study Buddy</title>
+<style>
+  :root {
+    --bg: #edf1f5;
+    --panel: #ffffff;
+    --ink: #172230;
+    --muted: #526071;
+    --line: #cdd6e0;
+    --accent: #1f5f8b;
+    --accent-dark: #164a6d;
+    --soft: #e3eef7;
+    --gold: #f4b400;
+    --warn: #9a3412;
+    --font: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.55; }
+  header { max-width: 980px; margin: 0 auto; padding: 20px 16px 4px; }
+  h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.01em; }
+  h1 span { color: var(--accent); }
+  .sub { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
+  .status { margin-top: 10px; font-size: 0.9rem; color: var(--muted); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #aaa; margin-right: 6px; }
+  .dot.ok { background: #1a8f55; }
+  .dot.bad { background: var(--warn); }
+  main { max-width: 980px; margin: 0 auto; padding: 12px 16px 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  h2 { margin: 0 0 12px; font-size: 1.05rem; }
+  label { display: block; margin: 12px 0 4px; font-weight: 600; font-size: 0.92rem; }
+  textarea, select { width: 100%; padding: 10px 11px; font: inherit; color: var(--ink); background: #fff; border: 1px solid #a9b6c4; border-radius: 6px; }
+  textarea { min-height: 260px; resize: vertical; }
+  textarea:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 1px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 420px) { .row { grid-template-columns: 1fr; } }
+  button { font: inherit; font-weight: 600; cursor: pointer; padding: 11px 16px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; }
+  button:hover { background: var(--accent-dark); }
+  button.secondary { background: #fff; color: var(--accent-dark); }
+  button.secondary:hover { background: var(--soft); }
+  button:disabled { opacity: 0.6; cursor: wait; }
+  .buttons { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  #go { flex: 1 1 200px; }
+  .msg { margin-top: 10px; font-size: 0.92rem; min-height: 1.3em; color: var(--muted); }
+  .msg.err { color: var(--warn); }
+  .hint { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+  .empty { color: var(--muted); font-style: italic; margin: 0; }
+  #summary { margin: 0 0 18px; padding: 12px 14px 12px 32px; background: var(--soft); border-radius: 8px; }
+  #summary li { margin: 4px 0; }
+  h3 { margin: 0 0 8px; font-size: 0.95rem; }
+  details { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; background: #fff; }
+  summary { cursor: pointer; padding: 10px 12px; font-weight: 600; list-style-position: inside; }
+  details p { margin: 0; padding: 0 12px 12px; color: var(--ink); }
+  details[open] { border-color: var(--accent); }
+  .actions { margin-top: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lazy Study <span>Buddy</span></h1>
+  <p class="sub">Paste your notes. Get a short summary and quiz questions. Everything runs on your own computer, with no internet needed.</p>
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">Checking the AI model…</span></div>
+</header>
+
+<main>
+  <section aria-labelledby="inTitle">
+    <h2 id="inTitle">Your notes</h2>
+    <label for="notes">Paste notes or a lesson</label>
+    <textarea id="notes" placeholder="Paste your course notes here…"></textarea>
+    <div class="row">
+      <div>
+        <label for="language">Write the study pack in</label>
+        <select id="language"><option value="en">English</option><option value="fr">French</option></select>
+      </div>
+      <div>
+        <label for="count">Quiz questions</label>
+        <select id="count"><option>3</option><option selected>5</option><option>8</option></select>
+      </div>
+    </div>
+    <label for="model">AI model</label>
+    <select id="model"><option value="">Default</option></select>
+    <div class="buttons">
+      <button id="go" type="button">Make my study pack</button>
+      <button id="sample" class="secondary" type="button">Try sample notes</button>
+    </div>
+    <div id="msg" class="msg" role="status" aria-live="polite"></div>
+    <p class="hint">Long notes are read in pieces, because a small model on a small laptop cannot read everything at once. Only the first 9,000 characters are used.</p>
+  </section>
+
+  <section aria-labelledby="outTitle">
+    <h2 id="outTitle">Your study pack</h2>
+    <p id="empty" class="empty">Your summary and quiz will appear here.</p>
+    <div id="result" hidden>
+      <h3>Summary</h3>
+      <ul id="summary"></ul>
+      <h3>Quiz: tap a question to see the answer</h3>
+      <div id="quiz"></div>
+      <div class="actions"><button id="copy" class="secondary" type="button">Copy study pack</button></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var pack = null;
+
+  var SAMPLE = "The OSI model describes how data moves across a network in seven layers.\n" +
+    "Layer 1, the physical layer, sends raw bits over cables or radio. Layer 2, the data link layer, moves frames between devices on the same network and uses MAC addresses.\n" +
+    "Layer 3, the network layer, routes packets between networks using IP addresses. Routers work at this layer.\n" +
+    "Layer 4, the transport layer, delivers data between applications. TCP is reliable and checks that data arrives, while UDP is faster but does not guarantee delivery.\n" +
+    "Layers 5 to 7 are the session, presentation and application layers. The application layer is where protocols such as HTTP, DNS and SMTP are used by software like web browsers and email clients.";
+
+  function setMsg(t, err) { $("msg").textContent = t || ""; $("msg").className = "msg" + (err ? " err" : ""); }
+
+  function render(p) {
+    pack = p;
+    var ul = $("summary"); ul.innerHTML = "";
+    p.summary.split("\n").forEach(function (line) {
+      line = line.replace(/^-\s*/, "").trim();
+      if (!line) return;
+      var li = document.createElement("li"); li.textContent = line; ul.appendChild(li);
+    });
+    var quiz = $("quiz"); quiz.innerHTML = "";
+    p.questions.forEach(function (qa, i) {
+      var d = document.createElement("details");
+      var s = document.createElement("summary"); s.textContent = (i + 1) + ". " + qa.q;
+      var a = document.createElement("p"); a.textContent = qa.a;
+      d.appendChild(s); d.appendChild(a); quiz.appendChild(d);
+    });
+    if (!p.questions.length) {
+      var n = document.createElement("p"); n.className = "empty";
+      n.textContent = "The model did not return questions in the right format. Try again.";
+      quiz.appendChild(n);
+    }
+    $("empty").hidden = true; $("result").hidden = false;
+  }
+
+  function packText() {
+    if (!pack) return "";
+    var t = "SUMMARY\n" + pack.summary + "\n\nQUIZ\n";
+    pack.questions.forEach(function (qa, i) { t += (i + 1) + ". " + qa.q + "\n   Answer: " + qa.a + "\n"; });
+    return t.trim();
+  }
+
+  async function loadModels() {
+    try {
+      var d = await (await fetch("/api/models")).json();
+      var sel = $("model");
+      if (d.models && d.models.length) {
+        sel.innerHTML = "";
+        d.models.forEach(function (name) {
+          var o = document.createElement("option"); o.value = name; o.textContent = name;
+          if (name === d.default) o.selected = true; sel.appendChild(o);
+        });
+        $("dot").className = "dot ok";
+        $("statusText").textContent = "AI model ready on this computer. No internet needed.";
+      } else {
+        $("dot").className = "dot bad";
+        $("statusText").textContent = "No AI model found. Open the Ollama app and install a model (see README).";
+      }
+    } catch (e) {
+      $("dot").className = "dot bad"; $("statusText").textContent = "Cannot reach the local server.";
+    }
+  }
+
+  $("sample").addEventListener("click", function () { $("notes").value = SAMPLE; setMsg("Sample notes added. Click Make my study pack."); });
+
+  $("go").addEventListener("click", async function () {
+    var notes = $("notes").value.trim();
+    if (notes.length < 40) { setMsg("Paste at least a few sentences of notes first.", true); $("notes").focus(); return; }
+    var btn = $("go"); btn.disabled = true; btn.textContent = "Working…";
+    setMsg("Reading your notes. This can take a minute on a small computer.");
+    try {
+      var r = await fetch("/api/study", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: notes, language: $("language").value, questions: $("count").value, model: $("model").value })
+      });
+      var d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Something went wrong.");
+      render(d);
+      var extra = d.truncated ? " Only the first 9,000 characters were used." : "";
+      setMsg("Done. Read in " + d.chunks + " piece" + (d.chunks === 1 ? "" : "s") + "." + extra);
+    } catch (e) { setMsg(e.message, true); }
+    finally { btn.disabled = false; btn.textContent = "Make my study pack"; }
+  });
+
+  $("copy").addEventListener("click", async function () {
+    try { await navigator.clipboard.writeText(packText()); setMsg("Copied."); }
+    catch (e) { setMsg("Could not copy. Select the text and copy it manually.", true); }
+  });
+
+  loadModels();
+})();
+</script>
+</body>
+</html>
